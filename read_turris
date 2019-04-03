@@ -1,0 +1,53 @@
+#!/bin/bash
+
+#login
+token_json=$(curl -s http://<turris ip>/cgi-bin/luci/rpc/auth --data '{"id": 1, "method": "login", "params": ["<user>", "<password>"]}') > /dev/null
+
+# get the token from the answer
+token=$(echo $token_json | grep -o '"result":"[^"]*'  | grep -o '[^"]*$')
+
+# get load and uptime
+turris_respond=$(curl -s http://<turris ip>/cgi-bin/luci/rpc/sys?auth="$token" --data '{"id": 1, "method": "exec", "params": ["uptime"]}') > /dev/null
+
+# get the temperature
+turris_respond2=$(curl -s http://<turris ip>/cgi-bin/luci/rpc/sys?auth="$token" --data '{"id": 1, "method": "exec", "params": ["thermometer"]}') > /dev/null
+
+# get the temperature
+turris_respond3=$(curl -s http://<turris ip>/cgi-bin/luci/rpc/sys?auth="$token" --data '{"id": 1, "method": "exec", "params": ["sensors"]}') > /dev/null
+
+#get wifi connections
+turris_respond4=$(curl -s http://<turris ip>/cgi-bin/luci/rpc/sys?auth="$token" --data '{"id": 1, "method": "exec", "params": ["iwinfo wlan0 assoc | grep \"ms\"  | cut -c1-17 | tr '\n' ','"]}') > /dev/null
+turris_respond5=$(curl -s http://<turris ip>/cgi-bin/luci/rpc/sys?auth="$token" --data '{"id": 1, "method": "exec", "params": ["iwinfo wlan1 assoc | grep \"ms\"  | cut -c1-17 | tr '\n' ','"]}') > /dev/null
+
+#logout
+curl -s http://<turris ip>/cgi-bin/luci/rpc/auth --data '{"id": 1, "method": "logout"}' > /dev/null
+
+# echo $turris_respond3
+
+#echo $turris_respond
+if [[ $turris_respond == *"day"* ]]; then
+  turris_uptime=$(echo $turris_respond | awk -F'( |,|:|")+' '{print $9 "day(s) " $11 ":" $12}')
+
+  turris_load=$(echo $turris_respond | awk -F'( |,|:|")+' '{print $16}')
+fi
+
+if [[ $turris_respond != *"day"* ]]; then
+  turris_uptime=$(echo $turris_respond | awk -F'( |,|:|")+' '{print $9 ":" $10}')
+
+  turris_load=$(echo $turris_respond | awk -F'( |,|:|")+' '{print $14}')
+fi
+
+turris_temperature=$(echo $turris_respond2 | awk -F'( |,|:|")+' '{print $6}')
+
+turris_temperature_2=$(echo $turris_respond3 | awk 'BEGIN{ RS=""; FS= "\n| |:|°"}{print $8}')
+
+#get mac addresses
+turris_macs=$(echo $turris_respond4 | awk -F'(:")+' '{print $2}' | rev | cut -c16- | rev | tr '\n' ' ')
+turris_macs2=$(echo $turris_respond5 | awk -F'(:")+' '{print $2}' | rev | cut -c16- | rev | tr '\n' ' ')
+
+#echo $turris_uptime
+#echo $turris_load
+
+cat << EOF
+{"id": "1", "uptime": "$turris_uptime", "load": "$turris_load", "temperature": "$turris_temperature", "temperature2": "$turris_temperature_2", "wlan0": "$turris_macs", "wlan1": "$turris_macs2"}
+EOF

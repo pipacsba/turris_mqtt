@@ -1,0 +1,13 @@
+#!/bin/bash
+
+#login
+token_json=$(curl -s http://<turris ip>/cgi-bin/luci/rpc/auth --data '{"id": 2, "method": "login", "params": ["<user>", "<password>"]}')
+
+token=$(echo $token_json | grep -o '"result":"[^"]*'  | grep -o '[^"]*$')
+
+#restart minidlna
+curl -s http://<turris ip>/cgi-bin/luci/rpc/sys?auth="$token" --data '{"id": 2, "method": "exec", "params": ["/etc/init.d/minidlna restart"]}' > /dev/null
+
+#logout
+curl -s http://<turris ip>/cgi-bin/luci/rpc/auth="$token" --data '{"id": 2, "method": "logout"}'
+
