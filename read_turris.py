@@ -2,6 +2,8 @@ import psutil
 import subprocess
 import paho.mqtt.client as mqtt
 import time
+import json
+from os import curdir, sep, listdir, path
 
 # Global variables (save data over switches / MQTT messages)
 message_received = 0
@@ -30,7 +32,7 @@ client.on_connect = on_connect
 client.on_message = on_message
 
 
-client.connect("<mqtt server ip>")
+client.connect("192.168.17.118")
 
 client.loop_start()
 
@@ -46,6 +48,15 @@ while True:
           client.publish("home/turris", result, 0, True)
         elif payload == "minidlna_reset":
           subprocess.run("/usr/local/bin/read_turris/reset_minidlna_turris")
+        elif payload == "hass_db":
+          subprocess.Popen("/usr/local/bin/read_turris/hass_db")
+        # get list of db
+          filelist = []
+          for file in listdir("/mnt/movies/hass"):
+                if file.endswith(".db"):
+                    size = path.getsize(path.join("/mnt/movies/hass", file)) >> 20
+                    filelist.append(file + "," + str(size) + "MB")
+          client.publish("home/hass_db",json.dumps(filelist).encode('utf-8'), 0, True)
     else:
         time.sleep(2)
 #        cpu_percent = psutil.cpu_percent()
