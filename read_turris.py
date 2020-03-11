@@ -49,7 +49,7 @@ while True:
         elif payload == "minidlna_reset":
           subprocess.run("/usr/local/bin/read_turris/reset_minidlna_turris")
         elif payload == "hass_db":
-          subprocess.Popen("/usr/local/bin/read_turris/hass_db")
+          subprocess.run("/usr/local/bin/read_turris/hass_db")
         # get list of db
           filelist = []
           for file in listdir("/mnt/movies/hass"):
