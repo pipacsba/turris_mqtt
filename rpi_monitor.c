@@ -1,8 +1,9 @@
-//---------------------- CLOCK.C --------------------------------------
+//---------------------- RPI_MONITOR.C --------------------------------------
 /*
-This clock.c is driving a 4x7 segment display (ht16K33v110) to display the time.
-The dimming is set based on a light sensor value from TSL2561 (CS package!).
-The display and the light sensor are connected to a raspberry pi 2 I2C outputs.
+ADDRESS: mqtt server IP
+sleep_sec: how often the measurement data shall be sent
+
+
 
 Inputs to call:
  - input 1: verbose settings
