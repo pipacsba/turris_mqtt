@@ -45,37 +45,37 @@ to compile:
 //----------------------------STRUCTURE DEFINITIONS--------------------
 
 typedef struct {
-  int id;
-  struct nl_sock* socket;
-  struct nl_cb* cb1,* cb2;
-  int result1, result2;
+    int id;
+    struct nl_sock* socket;
+    struct nl_cb* cb1,* cb2;
+    int result1, result2;
 } Netlink;
 
 typedef struct {
-  char ifname[30];
-  int ifindex;
-  int signal;
-  int txrate;
+    char ifname[30];
+    int ifindex;
+    int signal;
+    int txrate;
 } Wifi;
 
 static struct nla_policy stats_policy[NL80211_STA_INFO_MAX + 1] = {
-  [NL80211_STA_INFO_INACTIVE_TIME] = { .type = NLA_U32 },
-  [NL80211_STA_INFO_RX_BYTES] = { .type = NLA_U32 },
-  [NL80211_STA_INFO_TX_BYTES] = { .type = NLA_U32 },
-  [NL80211_STA_INFO_RX_PACKETS] = { .type = NLA_U32 },
-  [NL80211_STA_INFO_TX_PACKETS] = { .type = NLA_U32 },
-  [NL80211_STA_INFO_SIGNAL] = { .type = NLA_U8 },
-  [NL80211_STA_INFO_TX_BITRATE] = { .type = NLA_NESTED },
-  [NL80211_STA_INFO_LLID] = { .type = NLA_U16 },
-  [NL80211_STA_INFO_PLID] = { .type = NLA_U16 },
-  [NL80211_STA_INFO_PLINK_STATE] = { .type = NLA_U8 },
+    [NL80211_STA_INFO_INACTIVE_TIME] = { .type = NLA_U32 },
+    [NL80211_STA_INFO_RX_BYTES] = { .type = NLA_U32 },
+    [NL80211_STA_INFO_TX_BYTES] = { .type = NLA_U32 },
+    [NL80211_STA_INFO_RX_PACKETS] = { .type = NLA_U32 },
+    [NL80211_STA_INFO_TX_PACKETS] = { .type = NLA_U32 },
+    [NL80211_STA_INFO_SIGNAL] = { .type = NLA_U8 },
+    [NL80211_STA_INFO_TX_BITRATE] = { .type = NLA_NESTED },
+    [NL80211_STA_INFO_LLID] = { .type = NLA_U16 },
+    [NL80211_STA_INFO_PLID] = { .type = NLA_U16 },
+    [NL80211_STA_INFO_PLINK_STATE] = { .type = NLA_U8 },
 };
 
 static struct nla_policy rate_policy[NL80211_RATE_INFO_MAX + 1] = {
-  [NL80211_RATE_INFO_BITRATE] = { .type = NLA_U16 },
-  [NL80211_RATE_INFO_MCS] = { .type = NLA_U8 },
-  [NL80211_RATE_INFO_40_MHZ_WIDTH] = { .type = NLA_FLAG },
-  [NL80211_RATE_INFO_SHORT_GI] = { .type = NLA_FLAG },
+    [NL80211_RATE_INFO_BITRATE] = { .type = NLA_U16 },
+    [NL80211_RATE_INFO_MCS] = { .type = NLA_U8 },
+    [NL80211_RATE_INFO_40_MHZ_WIDTH] = { .type = NLA_FLAG },
+    [NL80211_RATE_INFO_SHORT_GI] = { .type = NLA_FLAG },
 };
 
 
@@ -90,7 +90,7 @@ Input:
     verbose: writes slept time to the standard output
 */
 
-void program_sleep(float sec, int verbose);
+void program_sleep(float sec);
 
 // stuff for detecting keypress
 int getkey();
@@ -121,6 +121,7 @@ const int mqtt_keepalive_sec = 200;
 volatile sig_atomic_t done = 0;
 volatile int first_run = 1;
 static volatile int keepRunning = 1;
+static volatile int verbose = 0;
 // variable to store argv[0] without passing it
 
 //---------------------END OF GLOBAL VARIABLES--------------------------
@@ -141,7 +142,6 @@ int main (int argc, char *argv[])
     sigaction(SIGTRAP, &action, NULL);
 
     // create variables to have terminal messages
-    int verbose = 0;
     // if the program is started with a number argument above or equal to 1, than turn on terminal messages
     if (argc > 1)
     {
@@ -176,7 +176,10 @@ int main (int argc, char *argv[])
     nl.id = initNl80211(&nl, &w);
     if (nl.id < 0) 
     {
-        fprintf(stderr, "Error initializing netlink 802.11\n");
+        if (verbose)
+        {
+            fprintf(stderr, "Error initializing netlink 802.11\n");
+        }
         return -1;
     }
 
@@ -184,9 +187,9 @@ int main (int argc, char *argv[])
     // done parameter can be changed by application kill signal for proper shutdown
     while(!done)
     {
-            thermal = fopen("/sys/class/thermal/thermal_zone0/temp", "r");
-            n = fscanf(thermal, "%f", &millideg);
-            fclose(thermal);
+        thermal = fopen("/sys/class/thermal/thermal_zone0/temp", "r");
+        n = fscanf(thermal, "%f", &millideg);
+        fclose(thermal);
         if (n == 1)
         {
                 systemp = millideg / 1000.0f;
@@ -199,15 +202,17 @@ int main (int argc, char *argv[])
         float load_5 = info.loads[1] * f_load;
         float load_15 = info.loads[2] * f_load;
 
-                statvfs("/var/log", &log2ram_df);
-                float log2ram_total = log2ram_df.f_blocks;
-                float log2ram_free  = log2ram_df.f_bfree;
-                float log2ram_used = 100.0 - log2ram_free / log2ram_total * 100.0;
+        statvfs("/var/log", &log2ram_df);
+        float log2ram_total = log2ram_df.f_blocks;
+        float log2ram_free  = log2ram_df.f_bfree;
+        float log2ram_used = 100.0 - log2ram_free / log2ram_total * 100.0;
 
         getWifiStatus(&nl, &w);
-        //printf("Interface: %s | signal: %d dB | txrate: %.1f MBit/s\n",
-        //   w.ifname, w.signal, (float)w.txrate/10);
-
+        if (verbose)
+        {
+            printf("Interface: %s | signal: %d dB | txrate: %.1f MBit/s\n",
+                   w.ifname, w.signal, (float)w.txrate/10);
+        }
 
         if (MQTTClient_isConnected(client) == 1)
         {
@@ -257,7 +262,7 @@ int main (int argc, char *argv[])
         int remaining_sleep_sec = sleep_sec;
         while (remaining_sleep_sec > mqtt_keepalive_sec)
         {
-            program_sleep((float)mqtt_keepalive_sec, verbose);
+            program_sleep((float)mqtt_keepalive_sec);
             remaining_sleep_sec = remaining_sleep_sec - mqtt_keepalive_sec;
             MQTTClient_yield();
             if (verbose)
@@ -266,9 +271,7 @@ int main (int argc, char *argv[])
             }
         }
 
-        program_sleep((float)remaining_sleep_sec,verbose);
-
-
+        program_sleep((float)remaining_sleep_sec);
 
         // exit on key-press, only works if verbose > 1
         if (verbose && is_key_pressed())
@@ -299,7 +302,7 @@ Input:
     sec: the seconds till the program needs to sleep
     verbose: writes slept time to the standard output
 */
-void program_sleep(float sec, int verbose)
+void program_sleep(float sec)
 {
     // create nanosleep structure
     struct timespec ts;
@@ -320,7 +323,10 @@ static int initNl80211(Netlink* nl, Wifi* w)
     nl->socket = nl_socket_alloc();
     if (!nl->socket)
     {
-        fprintf(stderr, "Failed to allocate netlink socket.\n");
+        if (verbose == 1)
+        {
+            fprintf(stderr, "Failed to allocate netlink socket.\n");
+        }
         return -ENOMEM;
     }
 
@@ -328,7 +334,10 @@ static int initNl80211(Netlink* nl, Wifi* w)
 
     if (genl_connect(nl->socket))
     {
-        fprintf(stderr, "Failed to connect to netlink socket.\n");
+        if (verbose == 1)
+        {
+            fprintf(stderr, "Failed to connect to netlink socket.\n");
+        }
         nl_close(nl->socket);
         nl_socket_free(nl->socket);
         return -ENOLINK;
@@ -337,7 +346,10 @@ static int initNl80211(Netlink* nl, Wifi* w)
     nl->id = genl_ctrl_resolve(nl->socket, "nl80211");
     if (nl->id< 0) 
     {
-        fprintf(stderr, "Nl80211 interface not found.\n");
+        if (verbose == 1)
+        {
+            fprintf(stderr, "Nl80211 interface not found.\n");
+        }
         nl_close(nl->socket);
         nl_socket_free(nl->socket);
         return -ENOENT;
@@ -347,7 +359,11 @@ static int initNl80211(Netlink* nl, Wifi* w)
     nl->cb2 = nl_cb_alloc(NL_CB_DEFAULT);
     if ((!nl->cb1) || (!nl->cb2)) 
     {
-        fprintf(stderr, "Failed to allocate netlink callback.\n");
+        if (verbose == 1)
+        {
+            fprintf(stderr, "Failed to allocate netlink callback.\n");
+        }
+        
         nl_close(nl->socket);
         nl_socket_free(nl->socket);
         return -ENOMEM;
@@ -419,13 +435,21 @@ static int getWifiInfo_callback(struct nl_msg *msg, void *arg) {
 
     if (!tb[NL80211_ATTR_STA_INFO])
     {
-        fprintf(stderr, "sta stats missing!\n"); return NL_SKIP;
+        if (verbose)
+        {
+            fprintf(stderr, "sta stats missing!\n"); 
+        }
+        return NL_SKIP;
     }
 
     if (nla_parse_nested(sinfo, NL80211_STA_INFO_MAX,
                        tb[NL80211_ATTR_STA_INFO], stats_policy))
     {
-        fprintf(stderr, "failed to parse nested attributes!\n"); return NL_SKIP;
+        if (verbose)
+        {
+            fprintf(stderr, "failed to parse nested attributes!\n"); 
+        }
+        return NL_SKIP;
     }
 
     if (sinfo[NL80211_STA_INFO_SIGNAL]) 
@@ -435,10 +459,12 @@ static int getWifiInfo_callback(struct nl_msg *msg, void *arg) {
 
     if (sinfo[NL80211_STA_INFO_TX_BITRATE]) 
     {
-        if (nla_parse_nested(rinfo, NL80211_RATE_INFO_MAX,
-                         sinfo[NL80211_STA_INFO_TX_BITRATE], rate_policy))
+        if (nla_parse_nested(rinfo, NL80211_RATE_INFO_MAX, sinfo[NL80211_STA_INFO_TX_BITRATE], rate_policy))
         {
-            fprintf(stderr, "failed to parse nested rate attributes!\n");
+            if (verbose)
+            {
+                fprintf(stderr, "failed to parse nested rate attributes!\n");
+            }
         }
         else 
         {
@@ -451,7 +477,6 @@ static int getWifiInfo_callback(struct nl_msg *msg, void *arg) {
     return NL_SKIP;
 }
 
-
 static int getWifiStatus(Netlink* nl, Wifi* w)
 {
     nl->result1 = 1;
@@ -462,7 +487,10 @@ static int getWifiStatus(Netlink* nl, Wifi* w)
         struct nl_msg* msg1 = nlmsg_alloc();
         if (!msg1)
         {
-            fprintf(stderr, "Failed to allocate netlink message.\n");
+            if (verbose)
+            {
+                fprintf(stderr, "Failed to allocate netlink message.\n");
+            }
             return -2;
         }
 
@@ -484,15 +512,20 @@ static int getWifiStatus(Netlink* nl, Wifi* w)
         {
             return -1;
         }
-        else { first_run = 0; }
-        //printf("%d, %s \n", w->ifindex, w->ifname);
+        else
+        {
+            first_run = 0;
+        }
     }
 
     struct nl_msg* msg2 = nlmsg_alloc();
 
     if (!msg2)
     {
-        fprintf(stderr, "Failed to allocate netlink message.\n");
+        if (verbose)
+        {
+            fprintf(stderr, "Failed to allocate netlink message.\n");
+        }
         return -2;
     }
 
