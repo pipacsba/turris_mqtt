@@ -18,8 +18,8 @@ mqtt_server = "xy.xy.xy.xy"
 client = mqtt.Client("turris_monitor")
 
 # get initial connections
-wlan0 = subprocess.run(["iwinfo", "wlan0", "assoc"], stdout=subprocess.PIPE)
-wlan1 = subprocess.run(["iwinfo", "wlan1", "assoc"], stdout = subprocess.PIPE)
+wlan0 = subprocess.run(["iwinfo", "phy0-ap0", "assoc"], stdout=subprocess.PIPE)
+wlan1 = subprocess.run(["iwinfo", "phy1-ap0", "assoc"], stdout = subprocess.PIPE)
 wlan0_s = wlan0.stdout.decode('ascii').rstrip()
 wlan1_s = wlan1.stdout.decode('ascii').rstrip()
 
